@@ -1,15 +1,22 @@
-# Gameınterpreter Android V0.4 – development package
+# GameInterpreter Android V0.5 — Test source
 
-Android Java / CameraX / ML Kit OCR + EN→TR translation / Android SpeechRecognizer / TTS / Google Play Billing.
+Android phone companion for console gaming: camera OCR and English speech recognition, English-to-Turkish ML Kit translation, optional Turkish TTS. Console-independent in microphone/camera mode.
 
-### Improvements from V0.3
-- Price copy corrected to $5.99 monthly, $69.99 yearly, $99.99 lifetime.
-- Trial starts at first mode launch, rather than at initial application startup. **Local demo only; not secure**.
-- Four-entry in-session translation history, stale translation guard, recognition retry backoff and simple repetition filtering.
-- Updated Android version code and GitHub Actions artifact name.
+## V0.5 changes
+- Corrected BillingClient 7.1.1 queryProductDetailsAsync callback (`List<ProductDetails>`).
+- Compact Premium entry with separate dialog and visible high-contrast purchase buttons.
+- TTS completion callback instead of approximate word-count timer to resume speech recognition.
+- Reduced immediate duplicate recognized phrases; ignored partial results when mode is inactive.
+- Stop active camera/microphone when app goes to background.
+- Kept V0.4 local trial state; old trials are not silently renewed.
+- Incremented versionCode/versionName and artifact label.
 
-### Build
-Extract into your GitHub repository, then `git add . && git commit -m "Gameinterpreter V0.4" && git push origin main`. GitHub Actions builds a DEBUG APK.
+## Build
+Push these files to `main`. GitHub Actions runs `gradle --no-daemon --stacktrace assembleDebug` and uploads a debug APK under Artifacts. This package has NOT been locally compiled or device-tested. Confirm CI is green before installing.
 
-### Important
-This is a development/test APK source package. No server has been provisioned; premium purchases intentionally DO NOT unlock paid functionality. This cannot be sold as a protected paid product until the steps in `SECURITY_AND_RELEASE.md` are implemented and tested.
+## Limitations
+- This is a test build, not a Google Play release or a functional paid-license product.
+- Purchases cannot grant Premium without a secure backend to verify Play tokens and entitlements. See SECURITY_AND_RELEASE.md.
+- A local 3-minute trial is not secure and remains expired if it was started in V0.4.
+- Direct console HDMI audio and PC capture streaming are not included; only Android microphone/camera inputs currently work.
+- Speech recognition uses Android SpeechRecognizer, which is not guaranteed continuous or low-latency for every game.

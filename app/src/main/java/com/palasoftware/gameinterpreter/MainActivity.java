@@ -7,6 +7,9 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.speech.tts.UtteranceProgressListener;
+import androidx.appcompat.app.AlertDialog;
 import android.content.SharedPreferences;
 import com.android.billingclient.api.*;
 import java.util.Arrays;
@@ -49,6 +52,10 @@ public class MainActivity extends AppCompatActivity {
   private long lastSpeechAt=0;
   private final java.util.ArrayDeque<String> recentLines=new java.util.ArrayDeque<>();
   private TextView historyLabel;
+  private Button cameraButton,listenButton;
+  private long lastAcceptedVoiceAt=0;
+  private String lastAcceptedVoice="";
+  private boolean ttsReady=false;
   private long trialDeadline=0;
   private boolean trialStarted=false;
   private TextView licenseLabel;
@@ -80,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
   private void addGap(LinearLayout l,int h){View v=new View(this);l.addView(v,new LinearLayout.LayoutParams(1,dp(h)));}
   private LinearLayout card(LinearLayout root,int color,int border){LinearLayout l=vertical();l.setPadding(dp(17),dp(17),dp(17),dp(17));l.setBackground(shape(color,border,18));root.addView(l,new LinearLayout.LayoutParams(-1,-2));return l;}
   private TextView text(String s,int size,int color){TextView t=label(s,size,color,false);t.setPadding(0,dp(8),0,dp(8));return t;}
-  private Button button(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setTextColor(Color.WHITE);b.setBackgroundTintList(null);return b;}
+  private Button button(String s){Button b=new Button(this);b.setText(s);b.setAllCaps(false);b.setTextSize(15);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setTextColor(Color.WHITE);b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.TRANSPARENT));b.setMinHeight(dp(48));b.setPadding(dp(12),dp(8),dp(12),dp(8));return b;}
   @Override public void onCreate(Bundle state){super.onCreate(state);
     getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
     ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(BG);scroll.setClipToPadding(false);
@@ -88,15 +95,16 @@ public class MainActivity extends AppCompatActivity {
     LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);root.addView(heading);
     TextView emblem=label("✦",25,ACCENT,true);emblem.setGravity(Gravity.CENTER);emblem.setBackground(shape(0xFF153940,0,14));heading.addView(emblem,new LinearLayout.LayoutParams(dp(52),dp(52)));
     LinearLayout titles=vertical();titles.setPadding(dp(12),0,0,0);heading.addView(titles);
-    titles.addView(label("GAMEINTERPRETER",19,Color.WHITE,true));titles.addView(label("CONSOLE LANGUAGE COMPANION  ·  V0.4",10,0xFF9DAEC8,false));
+    titles.addView(label("GAMEINTERPRETER",19,Color.WHITE,true));titles.addView(label("CONSOLE LANGUAGE COMPANION  ·  V0.5",10,0xFF9DAEC8,false));
     addGap(root,22);
     LinearLayout ready=card(root,0xFF102C31,0xFF235A59);status=label("Çeviri modeli hazırlanıyor…",15,0xFFB8F5E8,true);ready.addView(status);
     addGap(root,20);root.addView(label("ÇEVİRİ MODUNU SEÇ",12,0xFF99AEC5,true));addGap(root,10);
     LinearLayout modes=new LinearLayout(this);root.addView(modes);
-    Button camera=button("▣  Kamera");Button listen=button("◉  Canlı Dinle");
+    Button camera=button("▣  Kamera");Button listen=button("◉  Canlı Dinle");cameraButton=camera;listenButton=listen;
     camera.setBackground(shape(0xFF15545C,0xFF298C95,17));listen.setBackground(shape(0xFF39275B,0xFF7256A3,17));
     LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,dp(70),1);cp.setMargins(0,0,dp(6),0);modes.addView(camera,cp);
     LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(70),1);lp.setMargins(dp(6),0,0,0);modes.addView(listen,lp);
+    addGap(root,8);root.addView(label("Kamera: ekrandaki yazılar  •  Canlı Dinle: oyun diyalogları",12,0xFF9CAFC8,false));
     addGap(root,14);
     LinearLayout session=card(root,0xFF151F34,0xFF2A3B54);session.addView(label("CANLI OTURUM",12,0xFF77DFD7,true));addGap(session,10);
     Button stop=button("■  Çeviriyi Durdur");stop.setBackground(shape(0xFF303A51,0,12));session.addView(stop,new LinearLayout.LayoutParams(-1,dp(50)));
@@ -117,26 +125,28 @@ public class MainActivity extends AppCompatActivity {
     speakSwitch=new Switch(this);speakSwitch.setShowText(false);audioRow.addView(speakSwitch);
     addGap(root,18);root.addView(label("İlk kullanımda çeviri modeli indirilir. Canlı Dinle modu cihazın konuşma tanıma servisini kullanır; gecikme ve tanıma doğruluğu cihaza göre değişebilir.",12,0xFF93A3BC,false));
     addGap(root,12);
-    LinearLayout paywall=card(root,0xFF171D34,0xFF5E4B8D);
-    paywall.addView(label("GAMEINTERPRETER PREMIUM",15,0xFFBDA4FF,true));
-    licenseLabel=label("Lisans kontrol ediliyor…",14,Color.WHITE,false);paywall.addView(licenseLabel);
-    paywall.addView(label("3 dakika deneme • Aylık $5.99 • Yıllık $69.99 • Ömür boyu $99.99",12,0xFFB7C5D9,false));
-    Button monthly=button("Aylık abonelik");paywall.addView(monthly);
-    Button yearly=button("Yıllık abonelik");paywall.addView(yearly);
-    Button lifetime=button("Ömür boyu lisans");paywall.addView(lifetime);
-    Button restore=button("Satın alımları geri yükle");paywall.addView(restore);
-    monthly.setOnClickListener(v->purchase("gameinterpreter_monthly",BillingClient.ProductType.SUBS));
-    yearly.setOnClickListener(v->purchase("gameinterpreter_yearly",BillingClient.ProductType.SUBS));
-    lifetime.setOnClickListener(v->purchase("gameinterpreter_lifetime",BillingClient.ProductType.INAPP));
-    restore.setOnClickListener(v->refreshPurchases());
+    LinearLayout membership=card(root,0xFF171D34,0xFF5E4B8D);
+    LinearLayout membershipHeader=new LinearLayout(this);membershipHeader.setGravity(Gravity.CENTER_VERTICAL);membership.addView(membershipHeader);
+    LinearLayout membershipLabels=vertical();membershipHeader.addView(membershipLabels,new LinearLayout.LayoutParams(0,-2,1));
+    membershipLabels.addView(label("GAMEINTERPRETER PREMIUM",14,0xFFBDA4FF,true));
+    licenseLabel=label("Deneme süresi kontrol ediliyor…",13,0xFFCFD7E6,false);membershipLabels.addView(licenseLabel);
+    Button plans=button("Paketler ›");plans.setTextColor(Color.WHITE);plans.setBackground(shape(0xFF47376B,0xFF7862A8,12));membershipHeader.addView(plans,new LinearLayout.LayoutParams(dp(126),dp(50)));
+    plans.setOnClickListener(v->showPremiumDialog());
     SharedPreferences prefs=getSharedPreferences(PREFS,MODE_PRIVATE);
     trialStarted=prefs.getBoolean("started",false);
     // A local timer is ONLY a demo gate. Production requires an authenticated server trial.
-    if(trialStarted){trialDeadline=0;}
+    if(trialStarted){trialDeadline=0;} // Earlier V0.4 demo trial stays expired after restart; never silently reset.
     handler.post(trialGuard);
     initBilling();
     camera.setOnClickListener(v->requestMode(1));listen.setOnClickListener(v->requestMode(2));stop.setOnClickListener(v->stopAll());
-    tts=new TextToSpeech(this,result->{if(result==TextToSpeech.SUCCESS){tts.setLanguage(new Locale("tr","TR"));}});
+    tts=new TextToSpeech(this,result->{if(result==TextToSpeech.SUCCESS){
+      int language=tts.setLanguage(new Locale("tr","TR"));ttsReady=language!=TextToSpeech.LANG_MISSING_DATA&&language!=TextToSpeech.LANG_NOT_SUPPORTED;
+      tts.setOnUtteranceProgressListener(new UtteranceProgressListener(){
+        @Override public void onStart(String id){}
+        @Override public void onDone(String id){runOnUiThread(()->finishSpeech());}
+        @Override public void onError(String id){runOnUiThread(()->finishSpeech());}
+      });
+    }});
     translator=Translation.getClient(new TranslatorOptions.Builder().setSourceLanguage(TranslateLanguage.ENGLISH).setTargetLanguage(TranslateLanguage.TURKISH).build());
     translator.downloadModelIfNeeded(new DownloadConditions.Builder().build()).addOnSuccessListener(x->{modelReady=true;status.setText("●  Tercüman hazır · Mod seçin");}).addOnFailureListener(e->status.setText("Dil paketi indirilemedi: "+e.getMessage()));
   }
@@ -194,23 +204,45 @@ public class MainActivity extends AppCompatActivity {
       while(recentLines.size()>4)recentLines.removeLast();
       StringBuilder h=new StringBuilder();for(String line:recentLines){if(h.length()>0)h.append("\n\n");h.append(line);}
       if(historyLabel!=null)historyLabel.setText(h.toString());
-      if(speakSwitch.isChecked()&&tts!=null){
+      if(speakSwitch.isChecked()&&tts!=null&&ttsReady){
         if(fromVoice){voiceBusy=true;listening=false;if(speech!=null)speech.cancel();}
-        tts.speak(output,TextToSpeech.QUEUE_FLUSH,null,"translation");
-        if(fromVoice)handler.postDelayed(()->{voiceBusy=false;if(mode==2)restartListen();},Math.max(1600,output.length()*90L));
+        int spoken=tts.speak(output,TextToSpeech.QUEUE_FLUSH,null,"translation");
+        if(spoken==TextToSpeech.ERROR)finishSpeech();
       }
     }).addOnFailureListener(e->status.setText("Çeviri hatası: "+e.getMessage()));
+  }
+  private void finishSpeech(){
+    if(!voiceBusy)return;
+    voiceBusy=false;
+    if(mode==2&&hasAccess())handler.postDelayed(()->restartListen(),200);
+  }
+  private void showPremiumDialog(){
+    LinearLayout layout=vertical();layout.setPadding(dp(18),dp(8),dp(18),dp(8));
+    layout.addView(label("3 dakika ücretsiz deneme",14,0xFF34425A,true));addGap(layout,8);
+    layout.addView(label("Ücretler Play Console'da doğrulanmalıdır. Satın alma, sunucu lisans doğrulaması tamamlanmadan Premium erişim sağlamaz.",13,0xFF34425A,false));
+    addGap(layout,12);
+    Button monthly=button("Aylık  ·  $5.99");monthly.setBackground(shape(0xFF39275B,0,12));layout.addView(monthly);addGap(layout,8);
+    Button yearly=button("Yıllık  ·  $69.99");yearly.setBackground(shape(0xFF39275B,0,12));layout.addView(yearly);addGap(layout,8);
+    Button lifetime=button("Ömür boyu  ·  $99.99");lifetime.setBackground(shape(0xFF15545C,0,12));layout.addView(lifetime);addGap(layout,8);
+    Button restore=button("Satın alımları kontrol et");restore.setBackground(shape(0xFF303A51,0,12));layout.addView(restore);
+    AlertDialog dialog=new AlertDialog.Builder(this).setTitle("GameInterpreter Premium").setView(layout).setNegativeButton("Kapat",null).create();
+    monthly.setOnClickListener(v->{dialog.dismiss();purchase("gameinterpreter_monthly",BillingClient.ProductType.SUBS);});
+    yearly.setOnClickListener(v->{dialog.dismiss();purchase("gameinterpreter_yearly",BillingClient.ProductType.SUBS);});
+    lifetime.setOnClickListener(v->{dialog.dismiss();purchase("gameinterpreter_lifetime",BillingClient.ProductType.INAPP);});
+    restore.setOnClickListener(v->{dialog.dismiss();refreshPurchases();});
+    dialog.show();
   }
   private void startCamera(){cameraActive=true;preview.setVisibility(View.VISIBLE);status.setText("Kamera başlatılıyor…");ListenableFuture<ProcessCameraProvider> f=ProcessCameraProvider.getInstance(this);
     f.addListener(()->{try{ProcessCameraProvider provider=f.get();if(!cameraActive)return;provider.unbindAll();Preview pv=new Preview.Builder().build();pv.setSurfaceProvider(preview.getSurfaceProvider());ImageAnalysis analysis=new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build();analysis.setAnalyzer(cameraExecutor,image->{long now=System.currentTimeMillis();if(!cameraActive||processing||now-lastFrame<1100){image.close();return;}lastFrame=now;processing=true;try{android.media.Image frame=image.getImage();if(frame==null){processing=false;image.close();return;}InputImage input=InputImage.fromMediaImage(frame,image.getImageInfo().getRotationDegrees());ocr.process(input).addOnSuccessListener(result->{String raw=result.getText().trim();if(cameraActive&&!raw.isEmpty()&&!raw.equals(lastCamera)){lastCamera=raw;translate(raw,false);}}).addOnCompleteListener(task->{processing=false;image.close();});}catch(Exception ex){processing=false;image.close();}});provider.bindToLifecycle(this,CameraSelector.DEFAULT_BACK_CAMERA,pv,analysis);status.setText("Kamera açık • Ekrandaki İngilizce yazıya doğrultun");}catch(Exception e){status.setText("Kamera hatası: "+e.getMessage());}},ContextCompat.getMainExecutor(this));}
   private void startListen(){if(!SpeechRecognizer.isRecognitionAvailable(this)){status.setText("Bu cihazda konuşma tanıma servisi bulunamadı");return;}speech=SpeechRecognizer.createSpeechRecognizer(this);speech.setRecognitionListener(new RecognitionListener(){
     public void onReadyForSpeech(Bundle b){status.setText("Dinleniyor…");}public void onBeginningOfSpeech(){}public void onRmsChanged(float x){}public void onBufferReceived(byte[] b){}public void onEndOfSpeech(){}
     public void onError(int e){listening=false;if(mode==2&&!voiceBusy){listenFailures=Math.min(6,listenFailures+1);long delay=Math.min(8000,500L*(1<<listenFailures));handler.postDelayed(()->restartListen(),delay);}}
-    public void onResults(Bundle b){listening=false;listenFailures=0;ArrayList<String> items=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(items!=null&&!items.isEmpty()){String s=items.get(0);if(s.trim().length()>=4&&!s.equalsIgnoreCase(lastSpeech)&&android.os.SystemClock.elapsedRealtime()-lastSpeechAt>400){lastSpeech=s;lastSpeechAt=android.os.SystemClock.elapsedRealtime();translate(s,true);}}if(mode==2&&!voiceBusy)handler.postDelayed(()->restartListen(),800);}
-    public void onPartialResults(Bundle b){ArrayList<String> items=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(items!=null&&!items.isEmpty())original.setText(items.get(0));}
+    public void onResults(Bundle b){listening=false;listenFailures=0;ArrayList<String> items=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(items!=null&&!items.isEmpty()){String s=items.get(0);if(s.trim().length()>=4&&!s.equalsIgnoreCase(lastSpeech)&&SystemClock.elapsedRealtime()-lastSpeechAt>400){lastSpeech=s;lastSpeechAt=SystemClock.elapsedRealtime();if(!s.equalsIgnoreCase(lastAcceptedVoice)||SystemClock.elapsedRealtime()-lastAcceptedVoiceAt>12000){lastAcceptedVoice=s;lastAcceptedVoiceAt=SystemClock.elapsedRealtime();translate(s,true);}}}if(mode==2&&!voiceBusy)handler.postDelayed(()->restartListen(),800);}
+    public void onPartialResults(Bundle b){ArrayList<String> items=b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);if(items!=null&&!items.isEmpty()&&mode==2)original.setText(items.get(0));}
     public void onEvent(int event,Bundle b){}
   });restartListen();}
   private void restartListen(){if(!hasAccess()){stopAll();return;}if(mode!=2||voiceBusy||speech==null||listening)return;Intent i=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);i.putExtra(RecognizerIntent.EXTRA_LANGUAGE,"en-US");i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS,true);try{listening=true;speech.startListening(i);}catch(Exception e){listening=false;status.setText("Mikrofon hatası: "+e.getMessage());}}
   private void stopAll(){translateGeneration++;mode=0;cameraActive=false;listening=false;voiceBusy=false;preview.setVisibility(View.GONE);if(speech!=null){speech.cancel();speech.destroy();speech=null;}if(tts!=null)tts.stop();status.setText(modelReady?"Durduruldu":"Model hazırlanıyor");}
+  @Override protected void onStop(){super.onStop();if(mode!=0)stopAll();}
   @Override protected void onDestroy(){handler.removeCallbacks(trialGuard);if(billing!=null)billing.endConnection();stopAll();cameraExecutor.shutdown();ocr.close();if(translator!=null)translator.close();if(tts!=null){tts.stop();tts.shutdown();}super.onDestroy();}
 }
