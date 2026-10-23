@@ -1,36 +1,15 @@
-# Gameınterpreter — Android V0.1
+# Gameınterpreter Android V0.4 – development package
 
-Android / PS5 / Xbox oyun çeviri yardımcısı. Bu ZIP **kaynak projedir**, APK değildir.
+Android Java / CameraX / ML Kit OCR + EN→TR translation / Android SpeechRecognizer / TTS / Google Play Billing.
 
-## İşlevler
-- CameraX kamera önizlemesi + ML Kit İngilizce OCR + İngilizce→Türkçe cihaz içi çeviri
-- Android SpeechRecognizer ile İngilizce konuşma tanıma (cihaz/servis koşullarına bağlı)
-- Türkçe Android TextToSpeech, aç/kapat
-- Kamera ve mikrofon izinleri çalışma anında istenir
-- Dil modeli ilk çalıştırmada indirilir, internet gerekir
+### Improvements from V0.3
+- Price copy corrected to $5.99 monthly, $69.99 yearly, $99.99 lifetime.
+- Trial starts at first mode launch, rather than at initial application startup. **Local demo only; not secure**.
+- Four-entry in-session translation history, stale translation guard, recognition retry backoff and simple repetition filtering.
+- Updated Android version code and GitHub Actions artifact name.
 
-## Windows CMD ile GitHub'a yükleme
-1. ZIP dosyasını açın; klasör içinde CMD açın.
-2. GitHub'da **boş** bir repo oluşturun (README eklemeyin).
-3. Şu komutları uygulayın:
+### Build
+Extract into your GitHub repository, then `git add . && git commit -m "Gameinterpreter V0.4" && git push origin main`. GitHub Actions builds a DEBUG APK.
 
-```bat
-git init
-git branch -M main
-git add .
-git commit -m "Gameinterpreter V0.1 initial Android build"
-git remote add origin https://github.com/KULLANICI_ADINIZ/Gameinterpreter.git
-git push -u origin main
-```
-
-4. GitHub > Actions > Android APK > Run workflow (veya push sonrası otomatik çalışır).
-5. Başarılı işlem sonrası Actions > ilgili run > Artifacts > Gameinterpreter-V0.1-debug-apk dosyasını indirin.
-
-## Sınırlamalar
-- Test sürümüdür; donanım üzerinde derlenip doğrulanmamıştır.
-- Mikrofon modu sistem konuşma tanıyıcısının parça parça sonuçlarına dayanır, kesintisiz eşzamanlı tercüme değildir.
-- Android konuşma tanıma servisi bazı cihazlarda ağ gerektirebilir; tamamen offline olduğu garanti edilmez.
-- TTS oynatımı sırasında dinleme geçici duraklar; tekrar yakalamayı azaltır.
-- OCR şu an İngilizce Latin yazısını hedefler; ekran parlaması, hareket ve yazı büyüklüğü etkilidir.
-- Arka planda çalışma, Bluetooth doğrudan konsol sesi, konuşmacı ayrımı ve overlay henüz yoktur.
-- Google Play sürümü için yayın öncesi testler, gizlilik politikası ve release imzalama gerekir.
+### Important
+This is a development/test APK source package. No server has been provisioned; premium purchases intentionally DO NOT unlock paid functionality. This cannot be sold as a protected paid product until the steps in `SECURITY_AND_RELEASE.md` are implemented and tested.
