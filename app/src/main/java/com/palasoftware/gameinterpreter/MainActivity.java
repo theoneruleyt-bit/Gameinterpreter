@@ -165,9 +165,9 @@ public class MainActivity extends AppCompatActivity {
     if(billing==null||!billing.isReady()){status.setText("Google Play ödeme servisi hazır değil");return;}
     QueryProductDetailsParams.Product product=QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(type).build();
     billing.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(Arrays.asList(product)).build(),(result,details)->{
-      if(result.getResponseCode()!=BillingClient.BillingResponseCode.OK||details.getProductDetailsList()==null||details.getProductDetailsList().isEmpty()){
+      if(result.getResponseCode()!=BillingClient.BillingResponseCode.OK||details==null||details.isEmpty()){
         status.setText("Ürün Play Console'da bulunamadı veya test hesabı uygun değil");return;}
-      ProductDetails detail=details.getProductDetailsList().get(0);
+      ProductDetails detail=details.get(0);
       BillingFlowParams.ProductDetailsParams.Builder pb=BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(detail);
       if(BillingClient.ProductType.SUBS.equals(type)){
         if(detail.getSubscriptionOfferDetails()==null||detail.getSubscriptionOfferDetails().isEmpty()){status.setText("Abonelik teklifi tanımlanmamış");return;}
